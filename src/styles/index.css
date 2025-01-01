@@ -1,0 +1,49 @@
+:root {
+  --primary-color: #6366f1;
+  --primary-hover: #4f46e5;
+  --background-dark: #0f172a;
+  --background-light: #ffffff;
+  --surface-dark: #1e293b;
+  --text-light: #f8fafc;
+  --text-dark: #334155;
+  --text-muted: #94a3b8;
+  --border-radius: 8px;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.5;
+  color-scheme: light dark;
+  background-color: var(--background-dark);
+  color: var(--text-light);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--background-dark);
+}
+
+button {
+  border-radius: var(--border-radius);
+  border: none;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background-color: var(--primary-color);
+  color: var(--text-light);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  background-color: var(--primary-hover);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: var(--text-dark);
+    background-color: var(--background-light);
+  }
+}
