@@ -8,7 +8,7 @@ export const useAuth = () => {
     user,
     isAuthenticated,
     isLoading,
-    getAccessTokenSilently, // Dependency
+    getAccessTokenSilently,
   } = useAuth0();
 
   const login = async () => {

@@ -1,7 +1,6 @@
-import React from "react";
 import { useAuth } from "../../hooks/useAuth";
 
-const Home: React.FC = () => {
+const Home = () => {
   const { isAuthenticated, login, signUp } = useAuth();
 
   return (

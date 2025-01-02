@@ -1,12 +1,24 @@
+export type Currency = {
+  isoSymbol: string;
+  symbol: string;
+};
+
 export type Amount = {
-  currency: string;
+  currency: Currency;
   value: number;
 };
 
-export type Expense = {
+export type ExpenseQueryItem = {
   id?: string;
-  description: string;
+  title: string;
   amount: Amount;
   category: string;
   date: string;
+};
+
+export type ExpensesQueryData = {
+  expenses: {
+    totalCount: number;
+    items: ExpenseQueryItem[];
+  };
 };
