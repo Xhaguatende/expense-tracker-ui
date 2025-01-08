@@ -1,135 +1,203 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@apollo/client";
-import { Box, Button, Typography } from "@mui/material";
-import { ExpensesQueryData } from "../../types/Expense";
-import { GET_EXPENSES_QUERY } from "../../queries/expenses";
-import { GET_CATEGORIES_QUERY } from "../../queries/categories";
-import { UPSERT_EXPENSE_MUTATION } from "../../mutations/expenses";
+import { useEffect, useMemo, useState } from "react";
+import { Box, Button, Container, Typography } from "@mui/material";
 import LoadingIndicator from "../../components/LoadingIndicator";
 import ErrorMessage from "../../components/ErrorMessage";
+import usePagination from "../../hooks/usePagination";
+import useFilters, { Filters } from "./hooks/useFilters";
+import useDebouncedFilters from "./hooks/useDebouncedFilters";
+import {
+  ExpenseInput,
+  ExpenseSortInput,
+  SortDirection,
+} from "../../types/Expense";
+import { showSnackbar } from "../../services/SnackbarService";
+import {
+  useExpensesQuery,
+  useLazyExpenseByIdQuery,
+  useUpsertExpense,
+} from "../../services/expenseService";
+import { useCategoriesQuery } from "../../services/categoryService";
 import ExpensesTable from "./ExpensesTable";
-import useDebounce from "../../hooks/useDebounce";
-import { Category } from "../../types/Category";
 import ExpensesPageFilters from "./ExpensesPageFilters";
+import DeleteExpenseDialog from "./DeleteExpenseDialog";
 import ExpenseForm from "./ExpenseForm";
+import { useCurrenciesQuery } from "../../services/currencyService";
 
 const ExpensesPage = () => {
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [titleFilter, setTitleFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
+  const { page, rowsPerPage, setPage, setRowsPerPage } = usePagination();
+
+  const {
+    titleFilter,
+    categoryFilter,
+    currencyFilter,
+    startDate,
+    endDate,
+    handleFilterChange,
+    handleClearFilters,
+  } = useFilters();
+
+  const debouncedFilters = useDebouncedFilters({
+    titleFilter,
+    categoryFilter,
+    currencyFilter,
+    startDate,
+    endDate,
+  });
+
+  const [sortField, setSortField] = useState<string>("date");
+  const [sortOrder, setSortOrder] = useState<SortDirection>(SortDirection.DESC);
 
   const [open, setOpen] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<ExpenseInput | null>(
+    null
+  );
+  const [selectedExpenseId, setSelectedExpenseId] = useState<string>("");
 
-  const debouncedTitle = useDebounce(titleFilter);
-  const debouncedCategoryFilter = useDebounce(categoryFilter);
-  const debouncedStartDate = useDebounce(startDate);
-  const debouncedEndDate = useDebounce(endDate);
+  const { data: categoryData } = useCategoriesQuery();
+  const { data: currencyData } = useCurrenciesQuery();
 
-  const { data: categoryData } = useQuery(GET_CATEGORIES_QUERY, {
-    variables: {
-      sort: [{ name: "ASC" }],
-    },
-  });
-
-  const { loading, error, data, refetch } = useQuery<ExpensesQueryData>(
-    GET_EXPENSES_QUERY,
-    {
-      variables: {
-        skip: page * rowsPerPage,
-        take: rowsPerPage,
-        where: {
-          title: { contains: debouncedTitle },
-          categoryId:
-            debouncedCategoryFilter.length > 0
-              ? { in: debouncedCategoryFilter }
-              : undefined,
-          date: {
-            gte: debouncedStartDate ? debouncedStartDate : undefined,
-            lte: debouncedEndDate ? debouncedEndDate : undefined,
-          },
-        },
-      },
-      fetchPolicy: "cache-and-network",
-    }
+  const categories = useMemo(
+    () => categoryData?.categories?.items || [],
+    [categoryData]
   );
 
-  const [upsertExpense] = useMutation(UPSERT_EXPENSE_MUTATION, {
-    onCompleted: () => {
-      refetch();
-      handleClose();
+  const currencies = useMemo(
+    () => currencyData?.currencies?.items || [],
+    [currencyData]
+  );
+
+  const [getExpenseById, { data: expenseInfo }] = useLazyExpenseByIdQuery();
+
+  const {
+    data: dataExpenses,
+    loading: loadingExpenses,
+    error: errorExpenses,
+    refetch: refetchExpenses,
+  } = useExpensesQuery({
+    skip: page * rowsPerPage,
+    take: rowsPerPage,
+    where: {
+      title: { contains: debouncedFilters.titleFilter },
+      categoryId:
+        debouncedFilters.categoryFilter.length > 0
+          ? { in: debouncedFilters.categoryFilter }
+          : undefined,
+      currencySymbol:
+        debouncedFilters.currencyFilter.length > 0
+          ? { in: debouncedFilters.currencyFilter }
+          : undefined,
+      date: {
+        gte: debouncedFilters.startDate || undefined,
+        lte: debouncedFilters.endDate || undefined,
+      },
     },
+    order: {
+      [sortField]: sortOrder,
+    } as ExpenseSortInput,
   });
 
-  useEffect(() => {
-    refetch({
-      skip: page * rowsPerPage,
-      take: rowsPerPage,
-      where: {
-        title: { contains: debouncedTitle },
-        categoryId:
-          debouncedCategoryFilter.length > 0
-            ? { in: debouncedCategoryFilter }
-            : undefined,
-        date: {
-          gte: debouncedStartDate ? debouncedStartDate : undefined,
-          lte: debouncedEndDate ? debouncedEndDate : undefined,
-        },
-      },
-    });
-  }, [
-    page,
-    rowsPerPage,
-    debouncedTitle,
-    debouncedCategoryFilter,
-    debouncedStartDate,
-    debouncedEndDate,
-    refetch,
-  ]);
+  const [upsertExpense] = useUpsertExpense(() => {
+    refetchExpenses();
+    handleClose();
+  });
 
-  const handleClearFilters = () => {
-    setTitleFilter("");
-    setCategoryFilter([]);
-    setStartDate(null);
-    setEndDate(null);
-    setPage(0);
+  const handleOpen = () => {
+    setOpen(true);
+    setSelectedExpense(null);
+    setSelectedExpenseId("");
   };
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const handleClose = () => {
+    setOpen(false);
+    setSelectedExpense(null);
+    setSelectedExpenseId("");
+  };
 
-  const handleSubmit = (expense: {
-    categoryId: string;
+  const handleSubmit = async (expense: ExpenseInput) => {
+    try {
+      const { data } = await upsertExpense({ variables: { input: expense } });
+      const errors = data?.upsertExpense?.errors || [];
+
+      if (errors.length > 0) {
+        showSnackbar({
+          message: errors.map((e) => e.message).join(", "),
+          severity: "error",
+        });
+      } else {
+        showSnackbar({
+          message: "Expense saved successfully!",
+          severity: "success",
+        });
+        handleClose();
+      }
+    } catch (err) {
+      console.error(err);
+      showSnackbar({ message: "Failed to save expense.", severity: "error" });
+    }
+  };
+
+  const handleEdit = (id: string) => {
+    getExpenseById({
+      variables: {
+        id,
+      },
+    });
+    setSelectedExpenseId(id);
+  };
+
+  const handleSortChange = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(
+        sortOrder === SortDirection.ASC ? SortDirection.DESC : SortDirection.ASC
+      );
+    } else {
+      setSortField(field);
+      setSortOrder(SortDirection.ASC);
+    }
+  };
+
+  const [deleteDialogExpense, setDeleteDialogExpense] = useState<{
+    id: string;
     title: string;
-    description: string;
-    amount: {
-      currency: {
-        isoSymbol: string;
-      };
-      value: number;
-    };
+    date: string;
+  } | null>(null);
+
+  const handleDeleteDialogOpen = (expense: {
+    id: string;
+    title: string;
     date: string;
   }) => {
-    upsertExpense({
-      variables: {
-        input: expense,
-      },
-    });
+    setDeleteDialogExpense(expense);
   };
 
-  if (error) {
-    return <ErrorMessage message={error.message} />;
+  const handleDeleteDialogClose = () => {
+    setDeleteDialogExpense(null);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deleteDialogExpense) {
+      // Perform delete operation
+      console.log("Deleted expense:", deleteDialogExpense.id);
+    }
+    handleDeleteDialogClose();
+  };
+
+  useEffect(() => {
+    if (expenseInfo && selectedExpenseId) {
+      setSelectedExpense(expenseInfo.expense);
+      setOpen(true);
+    }
+  }, [selectedExpenseId, expenseInfo]);
+
+  if (errorExpenses) {
+    return <ErrorMessage message={errorExpenses.message} />;
   }
 
-  const expenses = data?.expenses?.items || [];
-  const totalCount = data?.expenses?.totalCount || 0;
-
-  const categories: Category[] = categoryData?.categories?.items || [];
+  const expenses = dataExpenses?.expensesView?.items || [];
+  const totalCount = dataExpenses?.expensesView?.totalCount || 0;
 
   return (
-    <Box sx={{ marginLeft: 5, marginRight: 5, marginTop: 2 }}>
+    <Container>
       <Box
         display="flex"
         justifyContent="space-between"
@@ -143,26 +211,25 @@ const ExpensesPage = () => {
       </Box>
 
       <ExpensesPageFilters
-        titleFilter={titleFilter}
-        categoryFilter={categoryFilter}
-        startDate={startDate}
-        endDate={endDate}
+        filters={{
+          titleFilter,
+          categoryFilter,
+          currencyFilter,
+          startDate,
+          endDate,
+        }}
         categories={categories}
-        onTitleFilterChange={(e) => setTitleFilter(e.target.value)}
-        onCategoryFilterChange={(e) =>
-          setCategoryFilter(e.target.value as string[])
+        currencies={currencies}
+        onFilterChange={(filterName, value) =>
+          handleFilterChange(filterName as keyof Filters, value)
         }
-        onStartDateChange={(newValue) => setStartDate(newValue)}
-        onEndDateChange={(newValue) => setEndDate(newValue)}
         onClearFilters={handleClearFilters}
       />
 
-      {expenses.length === 0 ? (
-        <div>
-          <Typography variant="h6" align="center">
-            No expenses found
-          </Typography>
-        </div>
+      {expenses.length === 0 && !loadingExpenses ? (
+        <Typography variant="h6" align="center">
+          No expenses found
+        </Typography>
       ) : (
         <ExpensesTable
           expenses={expenses}
@@ -171,22 +238,36 @@ const ExpensesPage = () => {
           rowsPerPage={rowsPerPage}
           onPageChange={setPage}
           onRowsPerPageChange={setRowsPerPage}
+          onEdit={(expenseId) => handleEdit(expenseId)}
+          sortField={sortField}
+          sortOrder={sortOrder}
+          onSortChange={handleSortChange}
+          onDelete={handleDeleteDialogOpen}
         />
       )}
 
-      {loading && (
+      {loadingExpenses && (
         <Box display="flex" justifyContent="center" mt={2}>
           <LoadingIndicator />
         </Box>
       )}
 
       <ExpenseForm
+        key={selectedExpense ? selectedExpense.id : "new-expense"}
         open={open}
         onClose={handleClose}
         onSubmit={handleSubmit}
         categories={categories}
+        currencies={currencies}
+        initialValues={selectedExpense || undefined}
       />
-    </Box>
+
+      <DeleteExpenseDialog
+        expense={deleteDialogExpense}
+        onClose={() => setDeleteDialogExpense(null)}
+        onDelete={handleDeleteConfirm}
+      />
+    </Container>
   );
 };
 

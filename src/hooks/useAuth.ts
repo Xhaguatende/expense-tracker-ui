@@ -1,5 +1,6 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import { useCallback } from "react";
+import { loadConfig } from "../utils/config";
 
 export const useAuth = () => {
   const {
@@ -42,6 +43,44 @@ export const useAuth = () => {
     });
   };
 
+  const hasClaim = (claim: string) => {
+    return user?.[claim] === true;
+  };
+
+  const getClaim = (claim: string) => {
+    return user?.[claim];
+  };
+
+  const hasVerifiedEmail = getClaim("email_verified") === true;
+
+  const resendVerificationEmail = async () => {
+    try {
+      const config = await loadConfig();
+      const baseUrl = config.authBaseUrl;
+      const token = await getToken();
+
+      const response = await fetch(`${baseUrl}/api/auth/resend-verification`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: user?.sub }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        console.log("Failed to resend verification email.");
+      }
+
+      return data.success;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
+  };
+
   return {
     login,
     logoutUser,
@@ -51,5 +90,8 @@ export const useAuth = () => {
     getToken,
     resetPassword,
     signUp,
+    hasVerifiedEmail,
+    hasClaim,
+    resendVerificationEmail,
   };
 };

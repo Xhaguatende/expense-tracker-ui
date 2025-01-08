@@ -1,13 +1,14 @@
-interface AppConfig {
+type AppConfig = {
   Auth0: Auth0Config;
   graphQLEndpoint: string;
-}
+  authBaseUrl: string;
+};
 
-interface Auth0Config {
+type Auth0Config = {
   Domain: string;
   ClientId: string;
   Audience: string;
-}
+};
 
 let config: AppConfig = {
   Auth0: {
@@ -16,6 +17,7 @@ let config: AppConfig = {
     Audience: "",
   },
   graphQLEndpoint: "",
+  authBaseUrl: "",
 };
 
 export const loadConfig = async (): Promise<AppConfig> => {

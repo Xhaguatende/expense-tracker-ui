@@ -1,8 +1,8 @@
 import Typography from "@mui/material/Typography";
 
-interface ErrorMessageProps {
+type ErrorMessageProps = {
   message: string;
-}
+};
 
 const ErrorMessage = ({ message }: ErrorMessageProps) => {
   return (

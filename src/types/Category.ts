@@ -3,3 +3,9 @@ export type Category = {
   name: string;
   description: string;
 };
+
+export type CategoriesQueryData = {
+  categories: {
+    items: Category[];
+  };
+};

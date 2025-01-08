@@ -1,8 +1,12 @@
+import { Box, Container, Typography } from "@mui/material";
+
 const Categories = () => {
   return (
-    <div>
-      <h2>Categories</h2>
-    </div>
+    <Container>
+      <Box>
+        <Typography variant="h4">Categories</Typography>
+      </Box>
+    </Container>
   );
 };
 
