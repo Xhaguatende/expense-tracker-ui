@@ -1,12 +1,12 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { Auth0Provider } from "@auth0/auth0-react";
+import { loadConfig } from "./utils/config";
 import AppWrapper from "./AppWrapper";
 import "./styles/index.css";
-import { loadConfig } from "./utils/config";
 
 const startApp = async () => {
-  const config = await loadConfig(); // Load config only once before rendering.
+  const config = await loadConfig();
   const auth0Config = config.Auth0;
 
   ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -25,7 +25,7 @@ const startApp = async () => {
         useRefreshTokensFallback={true}
         skipRedirectCallback={window.location.pathname === "/callback"}
       >
-        <AppWrapper graphQLEndpoint={config.graphQLEndpoint} />
+        <AppWrapper />
       </Auth0Provider>
     </React.StrictMode>
   );

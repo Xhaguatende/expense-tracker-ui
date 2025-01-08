@@ -1,47 +1,35 @@
-import { ApolloClient, InMemoryCache, HttpLink, from } from "@apollo/client";
+import { ApolloClient, InMemoryCache, createHttpLink } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
-import { onError } from "@apollo/client/link/error";
+import { loadConfig } from "../utils/config";
 
-export const createApolloClient = (
-  endpoint: string,
-  getToken: () => Promise<string>
-) => {
-  const httpLink = new HttpLink({
-    uri: endpoint,
-  });
+let apiUri = "";
 
+const loadApiUri = async () => {
+  const config = await loadConfig();
+  apiUri = config.graphQLEndpoint;
+};
+
+await loadApiUri();
+
+const httpLink = createHttpLink({
+  uri: apiUri,
+});
+
+const createApolloClient = (getToken: () => Promise<string>) => {
   const authLink = setContext(async (_, { headers }) => {
-    try {
-      const token = await getToken();
-
-      return {
-        headers: {
-          ...headers,
-          Authorization: `Bearer ${token}`,
-        },
-      };
-    } catch (error) {
-      console.error("Error fetching token:", error);
-      return { headers };
-    }
-  });
-
-  // Error handling link for debugging
-  const errorLink = onError(({ graphQLErrors, networkError }) => {
-    if (graphQLErrors) {
-      graphQLErrors.forEach(({ message, locations, path }) => {
-        console.log(
-          `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
-        );
-      });
-    }
-    if (networkError) {
-      console.log(`[Network error]: ${networkError}`);
-    }
+    const token = await getToken();
+    return {
+      headers: {
+        ...headers,
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    };
   });
 
   return new ApolloClient({
-    link: from([errorLink, authLink, httpLink]),
+    link: authLink.concat(httpLink),
     cache: new InMemoryCache(),
   });
 };
+
+export default createApolloClient;
