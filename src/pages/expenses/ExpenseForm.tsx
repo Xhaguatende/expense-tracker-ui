@@ -11,6 +11,7 @@ import {
   FormControl,
   Button,
   FormHelperText,
+  CircularProgress,
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFnsV3";
@@ -63,7 +64,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     validationSchema: toFormikValidationSchema(ExpenseSchema),
     onSubmit: async (values, { setSubmitting }) => {
       try {
-        onSubmit({
+        await onSubmit({
           id: values.id,
           categoryId: values.category,
           title: values.title,
@@ -201,7 +202,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose} variant="outlined" color="secondary">
+          <Button
+            onClick={onClose}
+            variant="outlined"
+            color="secondary"
+            disabled={formik.isSubmitting}
+          >
             Cancel
           </Button>
           <Button
@@ -209,8 +215,13 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             variant="contained"
             color="primary"
             disabled={!formik.isValid || formik.isSubmitting || !formik.dirty}
+            startIcon={
+              formik.isSubmitting ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : null
+            }
           >
-            Save
+            {formik.isSubmitting ? "Saving..." : "Save"}
           </Button>
         </DialogActions>
       </Dialog>

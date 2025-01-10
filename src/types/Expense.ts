@@ -69,3 +69,7 @@ export type ExpenseInput = {
   };
   date: string;
 };
+
+export type DeleteExpenseInput = {
+  id: string;
+};

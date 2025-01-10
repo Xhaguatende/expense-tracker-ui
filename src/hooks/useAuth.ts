@@ -53,7 +53,7 @@ export const useAuth = () => {
 
   const hasVerifiedEmail = getClaim("email_verified") === true;
 
-  const resendVerificationEmail = async () => {
+  const resendVerificationEmail = async (): Promise<boolean> => {
     try {
       const config = await loadConfig();
       const baseUrl = config.authBaseUrl;
@@ -74,7 +74,7 @@ export const useAuth = () => {
         console.log("Failed to resend verification email.");
       }
 
-      return data.success;
+      return data.success === true;
     } catch (error) {
       console.error(error);
       return false;

@@ -116,10 +116,10 @@ const ExpensesTable = ({
           {expenses.map((expense) => (
             <TableRow key={expense.id}>
               <TableCell title={expense.category}>
-                {trimString(expense.category, 20)}
+                {trimString(expense.category, 25)}
               </TableCell>
               <TableCell title={expense.title}>
-                {trimString(expense.title, 20)}
+                {trimString(expense.title, 25)}
               </TableCell>
               <TableCell
                 align="right"

@@ -15,6 +15,7 @@ import {
   useExpensesQuery,
   useLazyExpenseByIdQuery,
   useUpsertExpense,
+  useDeleteExpense,
 } from "../../services/expenseService";
 import { useCategoriesQuery } from "../../services/categoryService";
 import ExpensesTable from "./ExpensesTable";
@@ -23,6 +24,17 @@ import DeleteExpenseDialog from "./DeleteExpenseDialog";
 import ExpenseForm from "./ExpenseForm";
 import { useCurrenciesQuery } from "../../services/currencyService";
 
+function getDefaultExpense(): ExpenseInput {
+  return {
+    title: "",
+    amount: {
+      value: 0,
+      currencyIsoSymbol: "",
+    },
+    categoryId: "",
+    date: "",
+  };
+}
 const ExpensesPage = () => {
   const { page, rowsPerPage, setPage, setRowsPerPage } = usePagination();
 
@@ -98,19 +110,22 @@ const ExpensesPage = () => {
 
   const [upsertExpense] = useUpsertExpense(() => {
     refetchExpenses();
-    handleClose();
+  });
+
+  const [deleteExpense] = useDeleteExpense(() => {
+    refetchExpenses();
   });
 
   const handleOpen = () => {
-    setOpen(true);
     setSelectedExpense(null);
     setSelectedExpenseId("");
+    setOpen(true);
   };
 
   const handleClose = () => {
-    setOpen(false);
-    setSelectedExpense(null);
+    setSelectedExpense(getDefaultExpense());
     setSelectedExpenseId("");
+    setOpen(false);
   };
 
   const handleSubmit = async (expense: ExpenseInput) => {
@@ -174,10 +189,29 @@ const ExpensesPage = () => {
     setDeleteDialogExpense(null);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (deleteDialogExpense) {
-      // Perform delete operation
-      console.log("Deleted expense:", deleteDialogExpense.id);
+      try {
+        const { data } = await deleteExpense({
+          variables: { input: { id: deleteDialogExpense.id } },
+        });
+        const errors = data?.deleteExpense?.errors || [];
+
+        if (errors.length > 0) {
+          showSnackbar({
+            message: errors.map((e) => e.message).join(", "),
+            severity: "error",
+          });
+        } else {
+          showSnackbar({
+            message: "Expense deleted successfully!",
+            severity: "success",
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        showSnackbar({ message: "Failed to save expense.", severity: "error" });
+      }
     }
     handleDeleteDialogClose();
   };
@@ -209,7 +243,6 @@ const ExpensesPage = () => {
           Create New Expense
         </Button>
       </Box>
-
       <ExpensesPageFilters
         filters={{
           titleFilter,
@@ -225,12 +258,17 @@ const ExpensesPage = () => {
         }
         onClearFilters={handleClearFilters}
       />
-
-      {expenses.length === 0 && !loadingExpenses ? (
+      {loadingExpenses && (
+        <Box display="flex" justifyContent="center" mt={2}>
+          <LoadingIndicator />
+        </Box>
+      )}
+      {expenses.length === 0 && !loadingExpenses && (
         <Typography variant="h6" align="center">
           No expenses found
         </Typography>
-      ) : (
+      )}
+      {expenses.length > 0 && !loadingExpenses && (
         <ExpensesTable
           expenses={expenses}
           totalCount={totalCount}
@@ -244,12 +282,6 @@ const ExpensesPage = () => {
           onSortChange={handleSortChange}
           onDelete={handleDeleteDialogOpen}
         />
-      )}
-
-      {loadingExpenses && (
-        <Box display="flex" justifyContent="center" mt={2}>
-          <LoadingIndicator />
-        </Box>
       )}
 
       <ExpenseForm

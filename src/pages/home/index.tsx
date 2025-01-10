@@ -17,6 +17,7 @@ const Home = () => {
     signUp,
     resendVerificationEmail,
   } = useAuth();
+
   const [isLoading, setIsLoading] = useState(false);
 
   const handleResendVerification = async () => {

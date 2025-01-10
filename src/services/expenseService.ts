@@ -6,6 +6,7 @@ import {
   ExpenseFilter,
   ExpenseSortInput,
   ExpenseQueryById,
+  DeleteExpenseInput,
 } from "../types/Expense";
 
 const GET_EXPENSES_QUERY = gql`
@@ -62,6 +63,12 @@ const UPSERT_EXPENSE_MUTATION = gql`
           message
           property
         }
+        ... on ExpenseNotFoundDomainError {
+          id
+          code
+          message
+          property
+        }
         ... on CategoryNotFoundDomainError {
           code
           message
@@ -73,6 +80,22 @@ const UPSERT_EXPENSE_MUTATION = gql`
           message
           property
           isoSymbol
+        }
+      }
+    }
+  }
+`;
+
+const DELETE_EXPENSE_MUTATION = gql`
+  mutation DeleteExpense($input: DeleteExpenseInput!) {
+    deleteExpense(input: $input) {
+      boolean
+      errors {
+        ... on ExpenseNotFoundDomainError {
+          id
+          code
+          message
+          property
         }
       }
     }
@@ -104,6 +127,15 @@ export const useUpsertExpense = (onCompleted: () => void) => {
     { upsertExpense: { errors: { message: string }[] } },
     { input: ExpenseInput }
   >(UPSERT_EXPENSE_MUTATION, {
+    onCompleted,
+  });
+};
+
+export const useDeleteExpense = (onCompleted: () => void) => {
+  return useMutation<
+    { deleteExpense: { errors: { message: string }[] } },
+    { input: DeleteExpenseInput }
+  >(DELETE_EXPENSE_MUTATION, {
     onCompleted,
   });
 };
